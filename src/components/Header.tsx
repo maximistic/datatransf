@@ -15,7 +15,7 @@ export function Header() {
             <div className="h-8 w-8 rounded-full etl-gradient flex items-center justify-center">
               <span className="font-bold text-white">ETL</span>
             </div>
-            <span className="font-semibold text-lg hidden sm:inline">ETL-Frontend</span>
+            <span className="font-semibold text-lg hidden sm:inline">Quantum Apps</span>
           </Link>
         </div>
         
