@@ -9,44 +9,63 @@ from io import BytesIO
 import uvicorn
 from typing import Optional, List
 
-AI_AGENT_BASE_URL = "http://localhost:8000"  # This is the URL of the AI agent server
+AI_AGENT_BASE_URL = "http://127.0.0.1:8001"  # This is the URL of the AI agent server
 
 app = FastAPI(title="AI-Assisted Table Mapping API")
+
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust in production
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+from fastapi.responses import JSONResponse
+import numpy as np
 
 @app.post("/generate-prompt")
 async def generate_prompt(
     file1: UploadFile = File(...),
     file2: UploadFile = File(...),
-    file3: UploadFile = File(...)
+    destination: UploadFile = File(...)
 ):
     try:
-       
         file1_content = await file1.read()
         file2_content = await file2.read()
-        file3_content = await file3.read()
-        
-        #combining files
+        destination_content = await destination.read()
+        sfile1=file1_content
+        sfile2=file2_content
+        sfile3=destination_content
         files = {
             "file1": (file1.filename, file1_content, file1.content_type),
             "file2": (file2.filename, file2_content, file2.content_type),
-            "file3": (file3.filename, file3_content, file3.content_type),
+            "file3": (destination.filename, destination_content, destination.content_type),
         }
         print("The files are uploaded properly")
-        
+
         try:
             response = requests.post(f"{AI_AGENT_BASE_URL}/generate-prompt", files=files)
             if response.status_code == 200:
-                return response.json() 
+                generated_table = response.json()["result"]
+                current_table=generated_table
+                pattern = re.compile(r"(.*?)'''\s*([\s\S]*?)\s*'''(.*)", re.DOTALL)
+                match = pattern.search(generated_table)
+                print("match", match)
+                if match:
+                    print("true")
+                    table_text = match.group(2).strip()
+                    print(table_text)
+                    df_gen = pd.read_csv(io.StringIO(table_text), sep=",")
+
+                    result_dict = df_gen.replace({np.nan: None}).to_dict(orient="records")
+                    return JSONResponse(content=result_dict)
+
+                else:
+                    raise HTTPException(status_code=400, detail="Could not extract table from response.")
+
             else:
                 raise HTTPException(
                     status_code=response.status_code,
@@ -57,10 +76,11 @@ async def generate_prompt(
                 status_code=500,
                 detail=f"Could not connect to AI agent: {str(e)}"
             )
-    
+
     except Exception as e:
-        print("Error in /generate-prompt:", str(e))  
+        print("Error in /generate-prompt:", str(e))
         raise HTTPException(status_code=500, detail=f"Error generating prompt: {str(e)}")
+
 
 @app.post("/update-table/")
 async def update_table(
@@ -69,8 +89,9 @@ async def update_table(
     file1: UploadFile = File(...),
     file2: UploadFile = File(...)
 ):
+    
     try:
-       
+        
         file1_content = await file1.read()
         file2_content = await file2.read()
         
@@ -89,7 +110,22 @@ async def update_table(
             response = requests.post(f"{AI_AGENT_BASE_URL}/update-table/", files=files, data=data)
             
             if response.status_code == 200:
-                return response.json()  
+                current_table=response.json()["result"]
+                pattern = re.compile(r"(.*?)'''\s*([\s\S]*?)\s*'''(.*)", re.DOTALL)
+                match = pattern.search(current_table)
+                if match:
+                    before_text = match.group(1).strip()
+                    table_text = match.group(2).strip()
+                    after_text = match.group(3).strip() 
+                    try:
+                        df_gen = pd.read_csv(io.StringIO(table_text), sep=",")
+
+                        # Replace NaNs with None so JSON can serialize
+                        result_dict = df_gen.replace({np.nan: None}).to_dict(orient="records")
+                        return JSONResponse(content=result_dict)
+                    except:
+                        print("could not parse table content as csv")
+                        
             else:
                 raise HTTPException(
                     status_code=response.status_code,
@@ -178,6 +214,9 @@ async def generate_mapped_csv(
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating mapped CSV: {str(e)}")
+
+
+
 
 @app.post("/generate-sql")
 async def generate_sql(
@@ -290,4 +329,4 @@ async def push_to_sql(
 
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=8001, reload=True)  # Using port 8001 to avoid conflict with AI server
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)  # Using port 8001 to avoid conflict with AI server
