@@ -9,11 +9,11 @@ import { Brain, Database, LineChart, Workflow } from "lucide-react";
 
 const roles = [
   {
-    id: "data-analyst",
-    title: "Data Analyst",
-    description: "Focus on analyzing and interpreting complex data sets",
+    id: "System Integrator",
+    title: "System Integrator",
+    description: "Integrate and coordinate complex systems to work together seamlessly",
     icon: LineChart,
-    value: "Data Analyst" as const,
+    value: "System Integrator" as const,
   },
   {
     id: "data-engineer",
@@ -30,11 +30,11 @@ const roles = [
     value: "Business Analyst" as const,
   },
   {
-    id: "ml-engineer",
-    title: "ML Engineer",
-    description: "Develop machine learning models and applications",
+    id: "Data Analyst",
+    title: "Data Analyst",
+    description: "Focus on analyzing and interpreting complex data sets",
     icon: Brain,
-    value: "ML Engineer" as const,
+    value: "Data Analyst" as const,
   },
 ];
 

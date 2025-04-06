@@ -5,18 +5,18 @@ import pandas as pd
 from io import BytesIO
 import os
 import re
-from dotenv import load_dotenv
-
-load_dotenv()  # Load environment variables from .env file
 
 # Configure DeepSeek
-deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")  # Load DeepSeek API key from .env
-if not deepseek_api_key:
-    raise ValueError("DEEPSEEK_API_KEY is not set in the environment variables.")
+os.environ['DEEPSEEK_API_KEY'] = 'sk-093c3391ec134c55b76decd5225f703a'  # Set your DeepSeek API key here
 
 client = OpenAI(
+<<<<<<< HEAD
     api_key=deepseek_api_key,
     base_url="https://api.deepseek.com/v1" 
+=======
+    api_key=os.getenv("DEEPSEEK_API_KEY"),
+    base_url="https://api.deepseek.com/v1"  # DeepSeek API endpoint
+>>>>>>> 8e61a87f71b65f462ef5cb40d7be4c518adf1d16
 )
 
 app = FastAPI()
@@ -213,5 +213,5 @@ Ensure no markdown or HTML formatting is included.
     except Exception as e:
         return {"error": str(e)}
 
-if __name__ == "_main_":
+if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
