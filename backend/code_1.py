@@ -4,27 +4,34 @@ import uvicorn
 import pandas as pd
 from io import BytesIO
 import os
+import re
 
-os.environ['OPENAI_API_KEY'] = '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'
+# Configure DeepSeek
+os.environ['DEEPSEEK_API_KEY'] = 'sk-093c3391ec134c55b76decd5225f703a'  # Set your DeepSeek API key here
 
-client=OpenAI(api_key = os.getenv("OPENAI_API_KEY"))
+client = OpenAI(
+    api_key=os.getenv("DEEPSEEK_API_KEY"),
+    base_url="https://api.deepseek.com/v1"  # DeepSeek API endpoint
+)
+
 app = FastAPI()
-regex_pattern = r"(.*?)'''\s*([\s\S]*?)\s*'''(.*)"
+regex_pattern = r"(.?)'''\s([\s\S]?)\s'''(.*)"
 
 @app.post("/generate-prompt")
-def generate_prompt(
+async def generate_prompt(
     file1: UploadFile = File(...),
     file2: UploadFile = File(...),
     file3: UploadFile = File(...),
 ):
-     # Read CSV files and get first 5 rows
-    df1 = pd.read_csv(BytesIO( file1.file.read()))
+    print("here")
+    # Read CSV files and get first 5 rows
+    df1 = pd.read_csv(BytesIO(await file1.read()))
     data1 = df1.head(5).to_csv(index=False)
     
-    df2 = pd.read_csv(BytesIO(file2.file.read()))
+    df2 = pd.read_csv(BytesIO(await file2.read()))
     data2 = df2.head(5).to_csv(index=False)
     
-    destination_df = pd.read_csv(BytesIO(file3.file.read()))
+    destination_df = pd.read_csv(BytesIO(await file3.read()))
     destination_columns = ", ".join(destination_df.columns)
 
     prompt = f"""
@@ -60,43 +67,41 @@ def generate_prompt(
 
 6. Data Categorization and Table Generation:
    - Provide a  table with columns: "Destination Column" , "File 1 Column" , "File 2 Column" , "Reasoning"
-   -IMPORTANT: Return  the  table enclosed in triple single quotes on separate lines: 
+   -IMPORTANT: Return the table enclosed in triple single quotes on separate lines: 
      '''
       Destination Column,File 1 Column,File 2 Column,Reasoning
       value1,value2,value3,"value4"
      ...
-
      '''
      NO markdown or HTML formatting is needed.
-     **Ensure that only the cells in "Reasoning" column are enclosed in double quotes.**
-
+     *Ensure that only the cells in "Reasoning" column are enclosed in double quotes.*
    - Summarize how each column in file1 and file2 corresponds to the destination column based on identified patterns.
 """
 
     chat_completion = client.chat.completions.create(
-    messages=[
-        {
-            "role": "user",
-            "content": prompt,
-        }
-    ],
-    model="gpt-4o-mini",
-)
+        model="deepseek-chat",  # DeepSeek model name
+        messages=[
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
+    )
     result = chat_completion.choices[0].message.content
     formatted_result = result.strip()
 
     return {"result": formatted_result}
 
 @app.post("/update-table/")
-def update_table(
+async def update_table(
     table: str = Form(...),
     suggestion: str = Form(...),
     file1: UploadFile = File(...),
     file2: UploadFile = File(...),
 ):
     # Read file1 and file2 content for additional context
-    data1 = pd.read_csv(BytesIO(file1.file.read())).head(5).to_csv(index=False)
-    data2 = pd.read_csv(BytesIO(file2.file.read())).head(5).to_csv(index=False)
+    data1 = pd.read_csv(BytesIO(await file1.read())).head(5).to_csv(index=False)
+    data2 = pd.read_csv(BytesIO(await file2.read())).head(5).to_csv(index=False)
 
     # Construct the update prompt with context
     update_prompt = f"""
@@ -106,7 +111,7 @@ def update_table(
     The user has suggested the following changes:
     {suggestion}
     
-    To help you update the  table, here are sample rows from the source files:
+    To help you update the table, here are sample rows from the source files:
     
     File 1:
     {data1}
@@ -114,11 +119,11 @@ def update_table(
     File 2:
     {data2}
     
-    - Provide a  table with columns: "Destination Column", "File 1 Column", "File 2 Column", "Reasoning"
+    - Provide a table with columns: "Destination Column", "File 1 Column", "File 2 Column", "Reasoning"
     - Ensure that only the cells in the "Reasoning" column are enclosed in double quotes.
-    - All other cells should **not** have quotes.
-    - Use a comma `,` as the delimiter.
-    - Return the  table enclosed in triple single quotes on separate lines:
+    - All other cells should *not* have quotes.
+    - Use a comma , as the delimiter.
+    - Return the table enclosed in triple single quotes on separate lines:
       '''
       Destination Column,File 1 Column,File 2 Column,Reasoning
       First Name,name1,user1,"Represents first names from both files."
@@ -133,15 +138,15 @@ def update_table(
 
     # Query the LLM for the updated table
     chat_completion = client.chat.completions.create(
+        model="deepseek-chat",
         messages=[{"role": "user", "content": update_prompt}],
-        model="gpt-4o-mini",
     )
     updated_result = chat_completion.choices[0].message.content.strip()
 
     return {"updated_table": updated_result}
 
 @app.post("/generate-sql")
-def generate_sql_statements(
+async def generate_sql_statements(
     file1_content: str = Form(...),
     file2_content: str = Form(...),
     destination_columns: str = Form(...),
@@ -150,33 +155,33 @@ def generate_sql_statements(
     prompt = f"""
 You are an expert SQL developer. Based on the following information, generate SQL statements to create tables for file1, file2, and destination, including primary keys and necessary constraints. Handle cases where a destination column maps to multiple source columns. Include SQL constraints such as primary keys, foreign keys, and any necessary UNIQUE or NOT NULL constraints.
 
-**File1 Sample Data:**
+*File1 Sample Data:*
 {file1_content}
 
-**File2 Sample Data:**
+*File2 Sample Data:*
 {file2_content}
 
-**Destination Columns:**
+*Destination Columns:*
 {destination_columns}
 
-**Mapping Table (df_final):**
+*Mapping Table (df_final):*
 {df_final}
 
-**Instructions:**
-1. **CREATE TABLE Statements:**
-   - Define tables for `file1`, `file2`, and `destination` based on the mapping.
+*Instructions:*
+1. *CREATE TABLE Statements:*
+   - Define tables for file1, file2, and destination based on the mapping.
    - Choose appropriate data types.
    - Set primary keys for each table.
    - Add foreign key constraints where necessary.
 
-2. **INSERT INTO Statements:**
-   - Generate INSERT statements to populate the `destination` table based on the mappings.
+2. *INSERT INTO Statements:*
+   - Generate INSERT statements to populate the destination table based on the mappings.
    - Handle cases where destination columns are derived from multiple source columns.
 
-3. **Constraints:**
+3. *Constraints:*
    - Add any additional constraints that ensure data integrity based on the mappings.
 
-**Output Format:**
+*Output Format:*
 Provide all SQL statements enclosed within triple single quotes as shown below:
 '''
 -- Your SQL Statements Here
@@ -186,7 +191,7 @@ Ensure no markdown or HTML formatting is included.
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="deepseek-chat",
             messages=[{"role": "user", "content": prompt}],
             temperature=0  # For more deterministic output
         )
@@ -203,5 +208,5 @@ Ensure no markdown or HTML formatting is included.
     except Exception as e:
         return {"error": str(e)}
 
-if __name__ == "__main__":
+if __name__ == "_main_":
     uvicorn.run(app, host="0.0.0.0", port=8000)
