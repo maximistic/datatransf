@@ -7,7 +7,7 @@ import os
 import re
 
 # Configure DeepSeek
-os.environ['DEEPSEEK_API_KEY'] = 'sk-093c3391ec134c55b76decd5225f703a'  # Set your DeepSeek API key here
+os.environ['DEEPSEEK_API_KEY'] = ''  # Set your DeepSeek API key here
 
 client = OpenAI(
     api_key=os.getenv("DEEPSEEK_API_KEY"),
