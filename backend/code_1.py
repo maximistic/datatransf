@@ -5,12 +5,17 @@ import pandas as pd
 from io import BytesIO
 import os
 import re
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
 
 # Configure DeepSeek
-os.environ['DEEPSEEK_API_KEY'] = ''  # Set your DeepSeek API key here
+deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")  # Load DeepSeek API key from .env
+if not deepseek_api_key:
+    raise ValueError("DEEPSEEK_API_KEY is not set in the environment variables.")
 
 client = OpenAI(
-    api_key=os.getenv("DEEPSEEK_API_KEY"),
+    api_key=deepseek_api_key,
     base_url="https://api.deepseek.com/v1"  # DeepSeek API endpoint
 )
 
