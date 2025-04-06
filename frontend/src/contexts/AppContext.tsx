@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-export type Role = 'Data Analyst' | 'Data Engineer' | 'Business Analyst' | 'ML Engineer' | null;
+export type Role = 'System Integrator' | 'Data Engineer' | 'Business Analyst' | 'Data Analyst' | null;
 
 export interface UploadedFile {
   id: string;
