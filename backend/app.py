@@ -36,9 +36,6 @@ async def generate_prompt(
         file1_content = await file1.read()
         file2_content = await file2.read()
         destination_content = await destination.read()
-        sfile1=file1_content
-        sfile2=file2_content
-        sfile3=destination_content
         files = {
             "file1": (file1.filename, file1_content, file1.content_type),
             "file2": (file2.filename, file2_content, file2.content_type),
@@ -50,7 +47,6 @@ async def generate_prompt(
             response = requests.post(f"{AI_AGENT_BASE_URL}/generate-prompt", files=files)
             if response.status_code == 200:
                 generated_table = response.json()["result"]
-                current_table=generated_table
                 pattern = re.compile(r"(.*?)'''\s*([\s\S]*?)\s*'''(.*)", re.DOTALL)
                 match = pattern.search(generated_table)
                 print("match", match)

@@ -16,7 +16,7 @@ if not deepseek_api_key:
 
 client = OpenAI(
     api_key=deepseek_api_key,
-    base_url="https://api.deepseek.com/v1"  # DeepSeek API endpoint
+    base_url="https://api.deepseek.com/v1" 
 )
 
 app = FastAPI()
