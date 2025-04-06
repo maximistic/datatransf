@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -13,9 +12,9 @@ export function Header() {
         <div className="flex items-center gap-2">
           <Link to="/" className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full etl-gradient flex items-center justify-center">
-              <span className="font-bold text-white">ETL</span>
+              <span className="font-bold text-white">DT</span>
             </div>
-            <span className="font-semibold text-lg hidden sm:inline">Quantum Apps</span>
+            <span className="font-semibold text-lg hidden sm:inline">QADT</span>
           </Link>
         </div>
         
