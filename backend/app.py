@@ -44,7 +44,7 @@ async def generate_prompt(
         print("The files are uploaded properly")
         
         try:
-            response = requests.post(AI_AGENT_BASE_URL, files=files)
+            response = requests.post(f"{AI_AGENT_BASE_URL}/generate-prompt", files=files)
             if response.status_code == 200:
                 return response.json() 
             else:
@@ -290,4 +290,4 @@ async def push_to_sql(
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)  # Using port 8001 to avoid conflict with AI server
+    uvicorn.run("app:app", host="0.0.0.0", port=8001, reload=True)  # Using port 8001 to avoid conflict with AI server
