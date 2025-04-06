@@ -8,6 +8,7 @@ export interface UploadedFile {
   name: string;
   size: number;
   type: string;
+  file: File; 
 }
 
 interface User {
@@ -59,18 +60,38 @@ const generateId = () => Math.random().toString(36).substring(2, 11);
 export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   // Theme state
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const stored = localStorage.getItem("theme");
+    if (stored === "dark" || stored === "light") return stored;
+    if (typeof window !== "undefined") {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     }
-    return 'light';
+    return "light";
   });
   
-  // Auth state
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
   
-  // App state
-  const [selectedRole, setSelectedRole] = useState<Role>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem("isAuthenticated") === "true";
+  });
+  
+  const [user, setUser] = useState<User | null>(() => {
+    const storedUser = localStorage.getItem("user");
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
+  
+  const setSelectedRoleWithStorage = (role: Role) => {
+    setSelectedRole(role);
+    if (role) {
+      localStorage.setItem("selectedRole", role);
+    } else {
+      localStorage.removeItem("selectedRole");
+    }
+  };
+  
+  const [selectedRole, setSelectedRole] = useState<Role>(() => {
+    const stored = localStorage.getItem("selectedRole");
+    return (stored as Role) || null;
+  });
+  
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   
   // Chat state
@@ -82,39 +103,41 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   // Theme toggle function
   const toggleTheme = () => {
-    setTheme(prevTheme => {
-      const newTheme = prevTheme === 'light' ? 'dark' : 'light';
-      if (typeof window !== 'undefined') {
-        document.documentElement.classList.toggle('dark', newTheme === 'dark');
+    setTheme(prev => {
+      const newTheme = prev === "light" ? "dark" : "light";
+      localStorage.setItem("theme", newTheme);
+      if (typeof window !== "undefined") {
+        document.documentElement.classList.toggle("dark", newTheme === "dark");
       }
       return newTheme;
     });
   };
+  
 
-  // Apply dark mode class on mount if needed
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
       document.documentElement.classList.toggle('dark', theme === 'dark');
     }
-  }, [theme]);
+  }, [theme]);  
 
-  // Auth methods
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    if (email && password) { // Basic validation, will be replaced with real auth
-      setUser({
+    if (email && password) {
+      const loggedInUser = {
         id: generateId(),
         name: email.split('@')[0],
-        email
-      });
+        email,
+      };
+      setUser(loggedInUser);
       setIsAuthenticated(true);
+      localStorage.setItem("user", JSON.stringify(loggedInUser));
+      localStorage.setItem("isAuthenticated", "true");
       setIsLoading(false);
       return true;
     }
-    
+  
     setIsLoading(false);
     return false;
   };
@@ -146,6 +169,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     setUploadedFiles([]);
     setChatSessions([]);
     setCurrentChatSession(null);
+    localStorage.clear();
   };
 
   // File management methods
@@ -163,20 +187,40 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       id: generateId(),
       title: `Chat Session ${chatSessions.length + 1}`,
       createdAt: new Date(),
-      messages: [
-        {
-          id: generateId(),
-          content: "I've analyzed your uploaded files. Here's a summary...\n\n1. File 1 appears to contain customer transaction data with 1,000+ records.\n2. File 2 contains product inventory information.\n3. File 3 has geographic sales data broken down by region.\n\nWhat specific insights would you like to explore about this data?",
-          sender: 'assistant',
-          timestamp: new Date()
-        }
-      ]
+      messages: []
     };
-    
+  
     setChatSessions(prev => [...prev, newSession]);
     setCurrentChatSession(newSession);
+  
+    // You can trigger the AI response generator here
+    generateInitialAssistantMessage(newSession.id);
   };
-
+  
+  const generateInitialAssistantMessage = async (sessionId: string) => {
+    setIsLoading(true);
+    try {
+      // Prepare context (like uploadedFiles)
+      const contextData = uploadedFiles.map(f => f.name).join(', ');
+  
+      // 👇 This is where you'd call your AI backend / agent
+      const response = await fetch("/api/assistant/initial-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uploadedFiles: contextData }),
+      });
+  
+      const result = await response.json();
+  
+      // Add the assistant's message to the session
+      addMessage(result.message, 'assistant');
+    } catch (err) {
+      console.error("Failed to generate assistant message:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   const addMessage = (content: string, sender: 'user' | 'assistant') => {
     if (!currentChatSession) return;
     
@@ -210,7 +254,7 @@ export const AppProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     signup,
     logout,
     selectedRole,
-    setSelectedRole,
+    setSelectedRole: setSelectedRoleWithStorage,
     uploadedFiles,
     setUploadedFiles,
     addUploadedFile,
