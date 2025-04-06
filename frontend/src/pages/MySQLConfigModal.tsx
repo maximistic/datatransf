@@ -11,7 +11,7 @@ interface MySQLConfigModalProps {
 
 export const MySQLConfigModal: React.FC<MySQLConfigModalProps> = ({ open, onClose }) => {
   const handleSave = () => {
-    toast({ title: "✅ MySQL configuration saved!" });
+    toast({ title: "MySQL configuration saved!" });
     onClose();
   };
 
